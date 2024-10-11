@@ -256,13 +256,5 @@ df_selected_all['TOTAL ANOMALI'] = df_selected_all[anomali_columns].sum(axis=1)
 
 df_selected_all = df_selected_all[['ID', 'Nama', 'Center', 'Kelompok', 'SUKARELA', 'PENSIUN', 'HARI RAYA', 'PU', 'PMB', 'PSA', 'PRR', 'PTN', 'ARTA', 'DTP', 'TOTAL ANOMALI']]
 
-
-
-
-
-
-
-
-
-
-
+st.write("Data setelah diproses:")
+st.write(df_selected_all)
