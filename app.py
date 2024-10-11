@@ -228,9 +228,9 @@ def main():
                     result.to_excel(writer, index=False, sheet_name='Pivot')
                 buffer2.seek(0)
                 st.download_button(
-                    label="Unduh Data Pivot.xlsx",
+                    label="Unduh Data Anomali Pivot.xlsx",
                     data=buffer2.getvalue(),
-                    file_name="Data Pivot.xlsx",
+                    file_name="Data Anomali Pivot.xlsx",
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
             else:
