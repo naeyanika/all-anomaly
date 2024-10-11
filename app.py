@@ -178,7 +178,7 @@ rename_dict = {
 }
 df_prr = df_prr.rename(columns=rename_dict)
 
-df_prr = [['ID','PRR']]
+df_prr = df_prr[['ID','PRR']]
 df_prr['PRR'] = df_prr['PRR'].replace({True: 0, False: 1})
 #-------------------------------------------------------------------------------
 df_ptn = df_anomali_ptn[['ID','SEMUA KRITERIA TERPENUHI']]
