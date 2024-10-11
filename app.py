@@ -176,7 +176,7 @@ def process_data(dfs):
         # Kembalikan kedua dataframe
         return df_selected_all, result
 
-     except KeyError as e:
+    except KeyError as e:
         st.error(f"Terjadi kesalahan saat memproses data: {str(e)}. Pastikan semua file dan sheet yang diperlukan telah diunggah.")
         return None, None
 
