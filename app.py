@@ -259,3 +259,18 @@ df_selected_all = df_selected_all.drop_duplicates(subset=['ID', 'Nama'])
 
 st.write("Data setelah diproses:")
 st.write(df_selected_all)
+
+for name, df in {
+        'Data Anomali.xlsx': df_selected_all
+    }.items():
+        
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+    buffer.seek(0)
+    st.download_button(
+        label=f"Unduh {name}",
+        data=buffer.getvalue(),
+        file_name=name,
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
