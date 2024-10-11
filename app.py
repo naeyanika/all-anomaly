@@ -90,8 +90,8 @@ def process_data(dfs):
         df_pensiun = dfs['Anomali Simpanan.xlsx_Pensiun'][['ID','Anomali']].rename(columns={'Anomali':'PENSIUN'})
 
         # Merge all data
-        df_selected_all = dfs['DbSimpanan.xlsx_IA_SimpananDB'][['Client ID','Client Name','Center ID','Group ID']].rename(columns={
-            'Client ID':'ID', 'Client Name': 'NAMA', 'Center ID': 'CENTER', 'Group ID': 'KELOMPOK'
+        df_selected_all = dfs['DbSimpanan.xlsx_IA_SimpananDB'][['Client ID','Client Name','Center ID','Group ID','Meeting Day','Officer Name']].rename(columns={
+            'Client ID':'ID', 'Client Name': 'NAMA', 'Center ID': 'CENTER', 'Group ID': 'KELOMPOK', 'Meeting Day': 'HARI', 'Officer Name': 'STAF'
         })
 
         for df in [df_sukarela, df_pensiun, df_sihara, df_pu, df_pmb, df_psa, df_prr, df_ptn, df_arta, df_dtp]:
@@ -102,10 +102,75 @@ def process_data(dfs):
         anomali_columns = ['SUKARELA', 'PENSIUN', 'HARI RAYA', 'PU', 'PMB', 'PSA', 'PRR', 'PTN', 'ARTA', 'DTP']
         df_selected_all['TOTAL ANOMALI'] = df_selected_all[anomali_columns].sum(axis=1)
 
-        df_selected_all = df_selected_all[['ID', 'NAMA', 'CENTER', 'KELOMPOK'] + anomali_columns + ['TOTAL ANOMALI']]
+        df_selected_all = df_selected_all[['ID', 'NAMA', 'CENTER', 'KELOMPOK', 'HARI', 'STAF'] + anomali_columns + ['TOTAL ANOMALI']]
         df_selected_all = df_selected_all.drop_duplicates(subset=['ID', 'NAMA'])
 
-        return df_selected_all
+        # Pisahkan anomali simpanan dan pinjaman
+        anomali_simpanan = ['SUKARELA', 'PENSIUN', 'HARI RAYA']
+        anomali_pinjaman = ['PU', 'PMB', 'PSA', 'PRR', 'PTN', 'ARTA', 'DTP']
+
+        df_selected_all['Total Anomali Simpanan'] = df_selected_all[anomali_simpanan].sum(axis=1)
+        df_selected_all['Total Anomali Pinjaman'] = df_selected_all[anomali_pinjaman].sum(axis=1)
+
+        # Buat dictionary untuk memetakan hari bahasa Indonesia ke bahasa Inggris
+        hari_map = {
+        'SENIN': 'Monday',
+        'SELASA': 'Tuesday',
+        'RABU': 'Wednesday',
+        'KAMIS': 'Thursday',
+        'JUMAT': 'Friday',
+        'SABTU': 'Saturday',
+        'MINGGU': 'Sunday'
+        }
+
+        # Konversi kolom HARI ke bahasa Inggris
+        df_selected_all['HARI_EN'] = df_selected_all['HARI'].map(hari_map)
+
+        # Buat pivot table untuk setiap hari
+        pivot_dfs = []
+        for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
+            pivot = df_selected_all[df_selected_all['HARI_EN'] == day].pivot_table(
+                values=['Total Anomali Simpanan', 'Total Anomali Pinjaman'],
+                index=['STAF', 'CENTER'],
+                aggfunc='sum'
+            ).reset_index()
+    
+            pivot.columns = [f'{day}_{col}' if col not in ['STAF', 'CENTER'] else col for col in pivot.columns]
+            pivot_dfs.append(pivot)
+
+        # Gabungkan semua pivot table
+        result = pivot_dfs[0]
+        for df in pivot_dfs[1:]:
+            result = result.merge(df, on=['STAF', 'CENTER'], how='outer')
+
+        # Urutkan kolom
+        column_order = ['STAF', 'CENTER']
+        for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']:
+            column_order.extend([f'{day}_Total Anomali Simpanan', f'{day}_Total Anomali Pinjaman'])
+
+        result = result.reindex(columns=column_order)
+
+        # Ganti nama kolom kembali ke bahasa Indonesia
+        rename_dict = {
+        'Monday': 'SENIN',
+        'Tuesday': 'SELASA',
+        'Wednesday': 'RABU',
+        'Thursday': 'KAMIS',
+        'Friday': 'JUMAT',
+        'Saturday': 'SABTU',
+        'Sunday': 'MINGGU'
+        }
+
+        result.columns = [' '.join(col.split('_')).replace(day_en, day_id) 
+                          for col in result.columns 
+                          for day_en, day_id in rename_dict.items() 
+                          if day_en in col]
+
+        # Isi NaN dengan 0
+        result = result.fillna(0)
+
+# Kembalikan kedua dataframe
+        return df_selected_all, result
 
     except KeyError as e:
         st.error(f"Terjadi kesalahan saat memproses data: {str(e)}. Pastikan semua file dan sheet yang diperlukan telah diunggah.")
@@ -132,21 +197,40 @@ def main():
         ]
         
         if all(file in dfs for file in required_files):
-            df_selected_all = process_data(dfs)
-            if df_selected_all is not None:
+            df_selected_all, result = process_data(dfs)
+            
+            if df_selected_all is not None and result is not None:
                 st.write("Data setelah diproses:")
                 st.write(df_selected_all)
                 
-                buffer = io.BytesIO()
-                with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                st.write("Data Pivot:")
+                st.write(result)
+                
+                # Unduh Data Anomali
+                buffer1 = io.BytesIO()
+                with pd.ExcelWriter(buffer1, engine='xlsxwriter') as writer:
                     df_selected_all.to_excel(writer, index=False, sheet_name='Sheet1')
-                buffer.seek(0)
+                buffer1.seek(0)
                 st.download_button(
                     label="Unduh Data Anomali.xlsx",
-                    data=buffer.getvalue(),
+                    data=buffer1.getvalue(),
                     file_name="Data Anomali.xlsx",
                     mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
+                
+                # Unduh Data Pivot
+                buffer2 = io.BytesIO()
+                with pd.ExcelWriter(buffer2, engine='xlsxwriter') as writer:
+                    result.to_excel(writer, index=False, sheet_name='Pivot')
+                buffer2.seek(0)
+                st.download_button(
+                    label="Unduh Data Pivot.xlsx",
+                    data=buffer2.getvalue(),
+                    file_name="Data Pivot.xlsx",
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            else:
+                st.error("Terjadi kesalahan saat memproses data.")
         else:
             missing_files = [file for file in required_files if file not in dfs]
             st.warning(f"Beberapa file atau sheet yang diperlukan belum diunggah: {', '.join(missing_files)}")
