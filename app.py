@@ -234,7 +234,7 @@ rename_dict = {
     'Group ID': 'Kelompok'
     }
 df_selected_all = df_selected_all.rename(columns=rename_dict)
-df_selected_all = df_selected_all.drop_duplicates(subset=['ID', 'Nama'])
+
 
 df_selected_all = df_selected_all.merge(df_sukarela[['ID', 'SUKARELA']], on='ID', how='left')
 df_selected_all = df_selected_all.merge(df_pensiun[['ID', 'PENSIUN']], on='ID', how='left')
@@ -255,6 +255,7 @@ anomali_columns = ['SUKARELA', 'PENSIUN', 'HARI RAYA', 'PU', 'PMB', 'PSA', 'PRR'
 df_selected_all['TOTAL ANOMALI'] = df_selected_all[anomali_columns].sum(axis=1)
 
 df_selected_all = df_selected_all[['ID', 'Nama', 'Center', 'Kelompok', 'SUKARELA', 'PENSIUN', 'HARI RAYA', 'PU', 'PMB', 'PSA', 'PRR', 'PTN', 'ARTA', 'DTP', 'TOTAL ANOMALI']]
+df_selected_all = df_selected_all.drop_duplicates(subset=['ID', 'Nama'])
 
 st.write("Data setelah diproses:")
 st.write(df_selected_all)
