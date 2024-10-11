@@ -161,20 +161,24 @@ def process_data(dfs):
         'Sunday': 'MINGGU'
         }
 
-        result.columns = [' '.join(col.split('_')).replace(day_en, day_id) 
-                          for col in result.columns 
-                          for day_en, day_id in rename_dict.items() 
-                          if day_en in col]
+        new_columns = []
+        for col in result.columns:
+            for day_en, day_id in rename_dict.items():
+                if day_en in col:
+                    col = col.replace(day_en, day_id)
+            new_columns.append(' '.join(col.split('_')))
+        
+        result.columns = new_columns
 
         # Isi NaN dengan 0
         result = result.fillna(0)
 
-# Kembalikan kedua dataframe
+        # Kembalikan kedua dataframe
         return df_selected_all, result
 
-    except KeyError as e:
+     except KeyError as e:
         st.error(f"Terjadi kesalahan saat memproses data: {str(e)}. Pastikan semua file dan sheet yang diperlukan telah diunggah.")
-        return None
+        return None, None
 
 def main():
     uploaded_files = st.file_uploader("Unggah file Excel", accept_multiple_files=True, type=["xlsx"])
